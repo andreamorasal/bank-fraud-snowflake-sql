@@ -1,3 +1,107 @@
+-- Dataset: Bank Fraud dataset
+-- Database: Snowflake
+
+-- =========================================================
+-- Data Exploration & Profiling
+-- =========================================================
+
+
+-- Calculate:
+-- Total Transactions
+-- Total Customers
+-- Total Fraud Transactions
+-- Fraud Percentage
+
+
+SELECT
+    COUNT(transaction_id) AS total_transactions
+FROM bank_fraud;
+
+
+SELECT
+    COUNT(DISTINCT customer_id) AS total_customers
+FROM BANK_FRAUD;
+
+
+SELECT
+    COUNT(*) AS total_fraud_transactions
+FROM BANK_FRAUD
+WHERE is_fraud = TRUE;
+
+
+SELECT
+    ROUND(
+        COUNT_IF(is_fraud = TRUE) * 100.0 / COUNT(*),
+        2
+    ) AS fraud_percentage
+FROM bank_fraud;
+
+
+SELECT
+    COUNT(
+        CASE
+            WHEN is_fraud = TRUE
+            THEN 1
+        END
+    ) * 100 / COUNT(*) AS fraud_percentage
+FROM bank_fraud;
+
+-- Overall fraud analysis
+
+SELECT
+    COUNT(transaction_id) AS total_transactions,
+    COUNT(DISTINCT customer_id) AS total_customers,
+    COUNT_IF(is_fraud = TRUE) AS total_fraud_transactions,
+    ROUND(
+        COUNT_IF(is_fraud = TRUE) * 100.0 / COUNT(*),
+        2
+    ) AS fraud_percentage
+FROM bank_fraud;
+
+
+-- Find the top 10 countries by transaction volume.
+
+
+SELECT
+    country,
+    COUNT(transaction_id) AS transaction_volume
+FROM BANK_FRAUD
+GROUP BY country
+ORDER BY transaction_volume DESC
+LIMIT 10;
+
+
+-- Find the top 10 cities generating the highest transaction value.
+
+
+SELECT
+    city,
+    SUM(transaction_amount) AS transaction_value
+FROM bank_fraud
+GROUP BY city
+ORDER BY transaction_value DESC
+LIMIT 10;
+
+
+-- Generate a complete data profiling report showing:
+-- Column Name
+-- Distinct Values
+-- Null Count
+
+
+SELECT
+    LISTAGG(
+        'SELECT ''' || column_name || ''' AS column_name, ' ||
+        'COUNT(DISTINCT "' || column_name || '") AS distinct_values, ' ||
+        'COUNT(*) - COUNT("' || column_name || '") AS null_count ' ||
+        'FROM BANK_FRAUD',
+        ' UNION ALL '
+    ) WITHIN GROUP (ORDER BY ordinal_position) AS profiling_query
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'BANK_FRAUD';
+
+-- Profiling query
+
 SELECT
     'TRANSACTION_ID' AS column_name,
     COUNT(DISTINCT "TRANSACTION_ID") AS distinct_values,
@@ -202,6 +306,50 @@ SELECT
     'FRAUD_TYPE' AS column_name,
     COUNT(DISTINCT "FRAUD_TYPE") AS distinct_values,
     COUNT(*) - COUNT("FRAUD_TYPE") AS null_count
-FROM BANK_FRAUD
+FROM BANK_FRAUD;
 
-ORDER BY column_name;
+
+-- Determine the percentage distribution of transactions by:
+-- Payment Method
+
+
+SELECT
+    payment_method,
+    ROUND(
+        COUNT(transaction_id)
+        / SUM(COUNT(transaction_id)) OVER () * 100.0,
+        2
+    ) AS percentage_distribution
+FROM BANK_FRAUD
+GROUP BY payment_method
+ORDER BY percentage_distribution DESC;
+
+
+-- Device Type
+
+
+SELECT
+    device_type,
+    ROUND(
+        COUNT(transaction_id)
+        / SUM(COUNT(transaction_id)) OVER() * 100.0,
+        2
+    ) AS percentage_distribution
+FROM bank_fraud
+GROUP BY device_type
+ORDER BY percentage_distribution DESC;
+
+
+-- Merchant Category
+
+
+SELECT
+    merchant_category,
+    ROUND(
+        COUNT(transaction_id)
+        / SUM(COUNT(transaction_id)) OVER() * 100.0,
+        2
+    ) AS percentage_distribution
+FROM bank_fraud,
+GROUP BY merchant_category
+ORDER BY percentage_distribution DESC;
